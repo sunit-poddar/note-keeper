@@ -1,0 +1,52 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sign in — NoteKeeper</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+  <script>
+    (function() {
+      var t = localStorage.getItem('nk-theme') || 'light';
+      document.documentElement.setAttribute('data-theme', t);
+    })();
+  </script>
+</head>
+<body class="auth-body">
+<div class="auth-card">
+  <div class="auth-logo">
+    <div class="auth-logo-icon">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+    </div>
+    <span class="auth-logo-name">NoteKeeper</span>
+  </div>
+
+  <h1 class="auth-title">Welcome back</h1>
+  <p class="auth-subtitle">Sign in to continue to your notes</p>
+
+  {% if form.errors %}
+    <div class="auth-error">Incorrect username or password. Please try again.</div>
+  {% endif %}
+
+  <form method="post">
+    {% csrf_token %}
+    <div class="form-field">
+      <label for="id_username">Username</label>
+      <input type="text" id="id_username" name="username" autofocus autocomplete="username" required>
+    </div>
+    <div class="form-field">
+      <label for="id_password">Password</label>
+      <input type="password" id="id_password" name="password" autocomplete="current-password" required>
+    </div>
+    <input type="hidden" name="next" value="{{ next }}">
+    <button type="submit" class="btn-primary">Sign in</button>
+  </form>
+
+  <p class="auth-link">Don't have an account? <a href="{% url 'register' %}">Create one</a></p>
+</div>
+</body>
+</html>

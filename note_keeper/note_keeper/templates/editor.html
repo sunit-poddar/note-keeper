@@ -1,0 +1,162 @@
+{% load static %}<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NoteKeeper</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+  <!-- highlight.js themes — one is disabled at a time based on nk-theme -->
+  <link id="hljs-light" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+  <link id="hljs-dark"  rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+  <script type="importmap">
+  {
+    "imports": {
+      "@codemirror/state": "https://esm.sh/@codemirror/state@6",
+      "@codemirror/view": "https://esm.sh/@codemirror/view@6",
+      "@codemirror/commands": "https://esm.sh/@codemirror/commands@6",
+      "@codemirror/language": "https://esm.sh/@codemirror/language@6",
+      "@codemirror/lang-markdown": "https://esm.sh/@codemirror/lang-markdown@6",
+      "@codemirror/theme-one-dark": "https://esm.sh/@codemirror/theme-one-dark@6",
+      "@lezer/highlight": "https://esm.sh/@lezer/highlight@1",
+      "marked": "https://esm.sh/marked@12"
+    }
+  }
+  </script>
+  <script>
+    // Apply saved theme before paint to avoid flash
+    (function() {
+      var t = localStorage.getItem('nk-theme') || 'light';
+      document.documentElement.setAttribute('data-theme', t);
+      document.getElementById('hljs-light').disabled = (t === 'dark');
+      document.getElementById('hljs-dark').disabled  = (t === 'light');
+    })();
+  </script>
+</head>
+<body>
+<div id="shell">
+  <aside id="sidebar">
+    <div id="sidebar-header">
+      <span class="app-brand">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+        NoteKeeper
+      </span>
+      <div class="sidebar-actions">
+        <button id="btn-theme" class="icon-btn" title="Toggle light/dark mode" aria-label="Toggle theme">
+          <svg id="icon-sun" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+          <svg id="icon-moon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        </button>
+        <button id="btn-new-note" class="new-note-btn" title="New note">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          New
+        </button>
+      </div>
+    </div>
+
+    <div id="sidebar-search">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="search-icon"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" id="note-search" placeholder="Search notes…" autocomplete="off">
+    </div>
+
+    <ul id="note-list"></ul>
+
+    <div id="sidebar-footer">
+      <div class="user-info">
+        <div class="user-avatar">{{ request.user.username|slice:":1"|upper }}</div>
+        <span class="user-name">{{ request.user.username }}</span>
+      </div>
+      <form method="post" action="{% url 'logout' %}" style="margin:0">
+        {% csrf_token %}
+        <button type="submit" class="logout-btn" title="Sign out">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        </button>
+      </form>
+    </div>
+  </aside>
+
+  <div id="main-area">
+    <main id="editor-pane">
+      <div id="editor-toolbar">
+        <input type="text" id="note-title" placeholder="Untitled" autocomplete="off" spellcheck="true">
+        <div class="toolbar-right">
+          <span id="save-status"></span>
+          <button id="btn-publish" class="toolbar-btn publish-btn" title="Publish note with a shareable link">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+            Share
+          </button>
+          <button id="btn-delete" class="toolbar-btn delete-btn" title="Delete this note">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+            Delete
+          </button>
+        </div>
+      </div>
+      <div id="format-toolbar">
+        <div class="fmt-group">
+          <button class="fmt-btn" data-fmt="bold" title="Bold"><strong>B</strong></button>
+          <button class="fmt-btn" data-fmt="italic" title="Italic"><em>I</em></button>
+          <button class="fmt-btn" data-fmt="strike" title="Strikethrough"><del>S</del></button>
+        </div>
+        <span class="fmt-sep"></span>
+        <div class="fmt-group">
+          <button class="fmt-btn" data-fmt="h1" title="Heading 1">H<sub>1</sub></button>
+          <button class="fmt-btn" data-fmt="h2" title="Heading 2">H<sub>2</sub></button>
+          <button class="fmt-btn" data-fmt="h3" title="Heading 3">H<sub>3</sub></button>
+        </div>
+        <span class="fmt-sep"></span>
+        <div class="fmt-group">
+          <button class="fmt-btn fmt-mono" data-fmt="code" title="Inline code">&#96;&thinsp;&#96;</button>
+          <button class="fmt-btn fmt-mono" data-fmt="codeblock" title="Code block">{ }</button>
+          <button class="fmt-btn" data-fmt="quote" title="Blockquote">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M14.017 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151c-2.432.917-3.995 3.638-3.995 5.849h4v10h-9.983zm-14.017 0v-7.391c0-5.704 3.748-9.57 9-10.609l.996 2.151c-2.433.917-3.996 3.638-3.996 5.849h3.983v10h-9.983z"/></svg>
+          </button>
+        </div>
+        <span class="fmt-sep"></span>
+        <div class="fmt-group">
+          <button class="fmt-btn" data-fmt="ul" title="Bullet list">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="9" y1="6" x2="20" y2="6"/><line x1="9" y1="12" x2="20" y2="12"/><line x1="9" y1="18" x2="20" y2="18"/><circle cx="4" cy="6" r="1.5" fill="currentColor" stroke="none"/><circle cx="4" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="4" cy="18" r="1.5" fill="currentColor" stroke="none"/></svg>
+          </button>
+          <button class="fmt-btn" data-fmt="ol" title="Numbered list">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="10" y1="6" x2="21" y2="6"/><line x1="10" y1="12" x2="21" y2="12"/><line x1="10" y1="18" x2="21" y2="18"/><text x="1" y="9" font-size="8" fill="currentColor" stroke="none" font-family="monospace">1.</text><text x="1" y="15" font-size="8" fill="currentColor" stroke="none" font-family="monospace">2.</text><text x="1" y="21" font-size="8" fill="currentColor" stroke="none" font-family="monospace">3.</text></svg>
+          </button>
+          <button class="fmt-btn" data-fmt="table" title="Table">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="12" y1="3" x2="12" y2="21"/></svg>
+          </button>
+        </div>
+        <span class="fmt-sep"></span>
+        <div class="fmt-group">
+          <button class="fmt-btn" data-fmt="link" title="Link">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+          </button>
+          <button class="fmt-btn" data-fmt="hr" title="Horizontal rule" style="font-size:1rem;letter-spacing:-0.05em">—</button>
+        </div>
+      </div>
+      <div id="codemirror-container"></div>
+    </main>
+
+    <div id="divider"></div>
+
+    <aside id="preview-pane">
+      <div id="preview-header">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        Preview
+      </div>
+      <div id="preview-content"></div>
+    </aside>
+
+    <div id="empty-state">
+      <div class="empty-icon">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      </div>
+      <p class="empty-title">No note open</p>
+      <p class="empty-hint">Select a note from the sidebar or create a new one</p>
+    </div>
+  </div>
+</div>
+
+<input type="hidden" id="csrf-token" value="{{ csrf_token }}">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script type="module" src="{% static 'js/editor.js' %}"></script>
+</body>
+</html>

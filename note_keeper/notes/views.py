@@ -1,106 +1,105 @@
-from django.shortcuts import render, redirect
+import json
+
+from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
-from django.contrib import messages
-from django.http import Http404
+from django.contrib.auth.forms import UserCreationForm
+from django.http import Http404, JsonResponse
+from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
+from django.views.decorators.http import require_http_methods
 
-from django.db import transaction
-from .forms import NoteForm
 from .models import Note
-from .forms import UserRegisterForm
-
-# Create your views here.
-
-
-def index(request):
-    return render(request, 'index.html')
-
-
-@login_required()
-def note_list(request, *args, **kwargs):
-    notes = Note.objects.all()
-
-    context = {'notes': notes}
-    return render(request, 'note_home.html', context)
-
-
-def note_details(request, note_slug):
-    note = Note.objects.get(slug=note_slug)
-
-    context = {'note': note}
-
-    if request.user == note.author:
-        context['read_only'] = False
-    else:
-        if not note.is_public:
-            raise Http404("Page not found")
-
-        context['read_only'] = True
-
-    return render(request, 'note_details.html', context)
 
 
 @login_required
-def add_note(request, *args, **kwargs):
-    form = NoteForm(request.POST or None)
-
-    if form.is_valid():
-        stock = form.save(commit=False)
-        stock.author = request.user
-        stock.save()
-        messages.success(request, "Note created!")
-        return redirect('index')
-
-    context = {'form': form}
-
-    return render(request, 'add_note.html', context)
+def editor(request):
+    return render(request, 'editor.html')
 
 
 @login_required
-def edit(request, note_id):
-    obj = Note.objects.get(id=note_id)
-    if request.user == obj.author:
-        if request.method == 'POST':
-            form = NoteForm(request.POST, instance=obj)
-            if form.is_valid():
-                stock = form.save(commit=False)
-                stock.author = request.user
-                stock.save()
-                messages.success(request, f'Note Edited!')
-                return redirect('index')
-        else:
-            form = NoteForm(instance=obj)
-        return render(request, 'edit_note.html', {'form': form})
-    return redirect('index')
+@require_http_methods(['GET'])
+def api_note_list(request):
+    notes = (
+        Note.objects
+        .filter(author=request.user)
+        .order_by('-updated_at')
+        .values('id', 'title', 'updated_at', 'is_public', 'slug')
+    )
+    return JsonResponse({'notes': list(notes)})
 
 
 @login_required
-def delete(request, note_id):
-    obj = Note.objects.get(id=note_id)
-    if request.user == obj.author:
-        Note.objects.filter(id=note_id).delete()
-    return redirect('index')
+@require_http_methods(['POST'])
+def api_note_create(request):
+    note = Note.objects.create(author=request.user, title='Untitled', text='')
+    return JsonResponse({
+        'id': note.id,
+        'title': note.title,
+        'text': note.text,
+        'updated_at': note.updated_at.isoformat(),
+    }, status=201)
 
 
 @login_required
-@transaction.atomic
-def publish(request, note_id):
-    note = Note.objects.get(id=note_id)
+@require_http_methods(['GET'])
+def api_note_detail(request, note_id):
+    note = get_object_or_404(Note, id=note_id, author=request.user)
+    return JsonResponse({
+        'id': note.id,
+        'title': note.title,
+        'text': note.text,
+        'is_public': note.is_public,
+        'slug': note.slug,
+        'created_at': note.created_at.isoformat(),
+        'updated_at': note.updated_at.isoformat(),
+    })
 
-    if request.user == note.author:
-        published_url = note.publish()
-        return redirect("/note/{}".format(published_url))
 
-    return redirect("index")
+@login_required
+@require_http_methods(['POST'])
+def api_note_save(request, note_id):
+    body = json.loads(request.body)
+    now = timezone.now()
+    fields = {'updated_at': now}
+    if 'title' in body:
+        fields['title'] = body['title']
+    if 'text' in body:
+        fields['text'] = body['text']
+    rows = Note.objects.filter(id=note_id, author=request.user).update(**fields)
+    if not rows:
+        raise Http404
+    return JsonResponse({'ok': True, 'updated_at': now.isoformat()})
+
+
+@login_required
+@require_http_methods(['POST'])
+def api_note_delete(request, note_id):
+    count, _ = Note.objects.filter(id=note_id, author=request.user).delete()
+    if not count:
+        raise Http404
+    return JsonResponse({'ok': True})
+
+
+@login_required
+@require_http_methods(['POST'])
+def api_note_publish(request, note_id):
+    note = get_object_or_404(Note, id=note_id, author=request.user)
+    slug = note.publish()
+    return JsonResponse({'ok': True, 'slug': slug, 'public_url': f'/note/{slug}/'})
+
+
+def public_note(request, note_slug):
+    note = get_object_or_404(Note, slug=note_slug, is_public=True)
+    return render(request, 'public_note.html', {'note': note})
 
 
 def register(request):
     if request.method == 'POST':
-        form = UserRegisterForm(request.POST)
+        form = UserCreationForm(request.POST)
         if form.is_valid():
-            form.save()
-            username = form.cleaned_data.get('username')
-            messages.success(request, f'Account created for {username}!')
-            return redirect('login')
+            user = form.save()
+            login(request, user)
+            return redirect('editor')
     else:
-        form = UserRegisterForm()
-    return render(request, 'register.html', {'form': form})
+        form = UserCreationForm()
+    return render(request, 'registration/register.html', {'form': form})

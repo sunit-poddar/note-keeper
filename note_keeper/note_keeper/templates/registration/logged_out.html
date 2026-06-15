@@ -1,0 +1,32 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Signed out — NoteKeeper</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+  <script>
+    (function() {
+      var t = localStorage.getItem('nk-theme') || 'light';
+      document.documentElement.setAttribute('data-theme', t);
+    })();
+  </script>
+</head>
+<body class="auth-body">
+<div class="auth-card" style="text-align:center">
+  <div class="auth-logo" style="justify-content:center">
+    <div class="auth-logo-icon">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+    </div>
+    <span class="auth-logo-name">NoteKeeper</span>
+  </div>
+  <h1 class="auth-title">You've been signed out</h1>
+  <p class="auth-subtitle" style="margin-bottom:24px">Your session has ended safely.</p>
+  <a href="{% url 'login' %}" class="btn-primary" style="text-decoration:none;display:block">Sign in again</a>
+</div>
+</body>
+</html>
