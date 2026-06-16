@@ -1,0 +1,25 @@
+app = 'notekeeper-sunitpoddar'
+primary_region = 'bom'
+
+[build]
+  dockerfile = 'Dockerfile'
+
+[env]
+  DJANGO_SETTINGS_MODULE = 'note_keeper.settings.production'
+  PORT = '8080'
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 1
+
+[[mounts]]
+  source = 'notekeeper_data'
+  destination = '/data'
+
+[[vm]]
+  memory = '256mb'
+  cpu_kind = 'shared'
+  cpus = 1
