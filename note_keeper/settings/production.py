@@ -5,7 +5,7 @@ DEBUG = False
 
 SECRET_KEY = os.environ['SECRET_KEY']
 
-ALLOWED_HOSTS = ['notekeeper.sunitpoddar.dev']
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'notekeeper.sunitpoddar.dev').split(',')
 
 DATABASES = {
     'default': {

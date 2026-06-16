@@ -58,6 +58,7 @@ coverage.xml
 *.log
 local_settings.py
 db.sqlite3
+staticfiles/
 map_utils/data_migration/dumps/
 
 # Flask stuff:
