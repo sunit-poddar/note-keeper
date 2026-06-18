@@ -1,0 +1,25 @@
+{% load static %}<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Not Found — NoteKeeper</title>
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+  <script>
+    (function() {
+      var t = localStorage.getItem('nk-theme') || 'light';
+      document.documentElement.setAttribute('data-theme', t);
+    })();
+  </script>
+</head>
+<body class="auth-body">
+  <div class="auth-card" style="text-align:center">
+    <div style="font-size:3rem;margin-bottom:12px;opacity:0.2">404</div>
+    <p class="auth-title">Page not found</p>
+    <p class="auth-subtitle" style="margin-bottom:24px">That note doesn't exist or you don't have access to it.</p>
+    <a href="/" class="btn-primary" style="text-decoration:none;display:inline-block;width:auto;padding:10px 28px">
+      Go to my notes
+    </a>
+  </div>
+</body>
+</html>

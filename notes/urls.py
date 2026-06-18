@@ -10,4 +10,6 @@ urlpatterns = [
     path('api/notes/<int:note_id>/delete/', views.api_note_delete, name='api_note_delete'),
     path('api/notes/<int:note_id>/publish/', views.api_note_publish, name='api_note_publish'),
     path('note/<slug:note_slug>/', views.public_note, name='public_note'),
+    path('notes/<int:note_id>/print/', views.note_print, name='note_print'),
+    path('api/images/upload/', views.api_image_upload, name='api_image_upload'),
 ]

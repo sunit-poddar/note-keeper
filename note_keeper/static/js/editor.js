@@ -118,14 +118,11 @@ document.getElementById('btn-theme').addEventListener('click', () => {
 const csrfToken = document.getElementById('csrf-token').value;
 
 function apiFetch(url, options = {}) {
-  return fetch(url, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      'X-CSRFToken': csrfToken,
-      ...(options.headers || {}),
-    },
-  });
+  const headers = { 'X-CSRFToken': csrfToken, ...(options.headers || {}) };
+  if (!(options.body instanceof FormData)) {
+    headers['Content-Type'] = 'application/json';
+  }
+  return fetch(url, { ...options, headers });
 }
 
 // ── Save status ────────────────────────────────────────────────────────────
@@ -192,6 +189,11 @@ function initEditor() {
             },
           },
           { key: 'Tab', run: insertTab },
+          { key: 'Mod-b', run: () => { applyFormat('bold'); return true; } },
+          { key: 'Mod-i', run: () => { applyFormat('italic'); return true; } },
+          { key: 'Mod-k', run: () => { applyFormat('link'); return true; } },
+          { key: 'Mod-Shift-x', run: () => { applyFormat('strike'); return true; } },
+          { key: 'Mod-Shift-c', run: () => { applyFormat('codeblock'); return true; } },
           ...defaultKeymap,
           ...historyKeymap,
         ]),
@@ -416,14 +418,101 @@ document.getElementById('btn-publish').addEventListener('click', async () => {
   }
 });
 
-// ── Ctrl/Cmd+S → instant save ─────────────────────────────────────────────
+// ── Export ─────────────────────────────────────────────────────────────────
+function exportMd() {
+  if (!appState.currentNoteId) return;
+  const title = document.getElementById('note-title').value || 'Untitled';
+  const text = cmView.state.doc.toString();
+  const a = Object.assign(document.createElement('a'), {
+    href: URL.createObjectURL(new Blob([text], { type: 'text/markdown' })),
+    download: `${title}.md`,
+  });
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function exportPdf() {
+  if (!appState.currentNoteId) return;
+  window.open(`/notes/${appState.currentNoteId}/print/`, '_blank');
+}
+
+document.getElementById('btn-export-md').addEventListener('click', exportMd);
+document.getElementById('btn-export-pdf').addEventListener('click', exportPdf);
+
+// ── Image upload ───────────────────────────────────────────────────────────
+document.getElementById('btn-img-upload').addEventListener('click', () => {
+  if (appState.currentNoteId) document.getElementById('img-file-input').click();
+});
+
+document.getElementById('img-file-input').addEventListener('change', async e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  e.target.value = '';  // reset so same file can be re-selected
+  const formData = new FormData();
+  formData.append('image', file);
+  try {
+    const res = await apiFetch('/api/images/upload/', { method: 'POST', body: formData });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Upload failed');
+    const pos = cmView.state.selection.main.head;
+    const alt = file.name.replace(/\.[^.]+$/, '');
+    cmView.dispatch({ changes: { from: pos, insert: `![${alt}](${data.url})` } });
+    cmView.focus();
+  } catch (err) {
+    setSaveStatus('error');
+    alert(err.message || 'Image upload failed');
+  }
+});
+
+// ── Shortcuts modal ────────────────────────────────────────────────────────
+const shortcutsModal = document.getElementById('shortcuts-modal');
+
+function toggleShortcuts(show) {
+  shortcutsModal.style.display = show ? 'flex' : 'none';
+}
+
+document.getElementById('btn-shortcuts').addEventListener('click', () => toggleShortcuts(true));
+document.getElementById('btn-close-shortcuts').addEventListener('click', () => toggleShortcuts(false));
+shortcutsModal.addEventListener('click', e => {
+  if (e.target === shortcutsModal) toggleShortcuts(false);
+});
+
+// ── Keyboard shortcuts ─────────────────────────────────────────────────────
 document.addEventListener('keydown', e => {
-  if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+  const mod = e.metaKey || e.ctrlKey;
+  if (mod && e.key === 's') {
     e.preventDefault();
     if (appState.currentNoteId) {
       clearTimeout(appState.saveTimer);
       saveCurrentNote();
     }
+  }
+  if (mod && e.key === 'n') {
+    e.preventDefault();
+    document.getElementById('btn-new-note').click();
+  }
+  if (mod && e.shiftKey && e.key === 'Backspace') {
+    e.preventDefault();
+    document.getElementById('btn-delete').click();
+  }
+  if (mod && e.shiftKey && e.key === 'F') {
+    e.preventDefault();
+    document.getElementById('note-search').focus();
+  }
+  if (mod && e.shiftKey && e.key === 'E') {
+    e.preventDefault();
+    exportMd();
+  }
+  if (mod && e.shiftKey && e.key === 'P') {
+    e.preventDefault();
+    exportPdf();
+  }
+  if (mod && e.key === '/') {
+    e.preventDefault();
+    toggleShortcuts(shortcutsModal.style.display === 'none' || !shortcutsModal.style.display);
+  }
+  if (e.key === 'Escape' && shortcutsModal.style.display === 'flex') {
+    toggleShortcuts(false);
   }
 });
 

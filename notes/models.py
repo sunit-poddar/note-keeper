@@ -29,3 +29,9 @@ class Note(TimestampedModel):
         self.is_public = True
         self.save()
         return self.slug
+
+
+class UploadedImage(models.Model):
+    author = models.ForeignKey(User, on_delete=models.CASCADE, related_name='images')
+    image = models.ImageField(upload_to='images/%Y/%m/')
+    uploaded_at = models.DateTimeField(auto_now_add=True)
