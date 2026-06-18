@@ -4,9 +4,6 @@ primary_region = 'bom'
 [build]
   dockerfile = 'Dockerfile'
 
-[deploy]
-  release_command = "uv run python manage.py migrate --no-input"
-
 [env]
   DJANGO_SETTINGS_MODULE = 'note_keeper.settings.production'
   PORT = '8080'
