@@ -7,4 +7,5 @@ dependencies = [
     "python-slugify>=8.0",
     "gunicorn>=22.0",
     "whitenoise>=6.7",
+    "Pillow>=10.0",
 ]

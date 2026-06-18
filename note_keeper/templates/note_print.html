@@ -1,0 +1,159 @@
+{% load static %}<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ note.title }} — NoteKeeper</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+      font-size: 15px;
+      line-height: 1.75;
+      color: #1f2328;
+      background: #fff;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 48px 32px 80px;
+    }
+
+    .print-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 40px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid #d0d7de;
+    }
+    .brand { font-size: 0.8rem; color: #57606a; font-weight: 500; }
+    .print-btn {
+      padding: 7px 16px;
+      background: #0969da;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      cursor: pointer;
+    }
+    .print-btn:hover { background: #0860ca; }
+
+    h1.note-title {
+      font-size: 2rem;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      line-height: 1.2;
+      margin-bottom: 8px;
+    }
+    .note-meta {
+      font-size: 0.8rem;
+      color: #57606a;
+      margin-bottom: 36px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid #d0d7de;
+    }
+
+    #content h1, #content h2, #content h3, #content h4 {
+      margin: 1.4em 0 0.5em;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      line-height: 1.25;
+    }
+    #content h1:first-child, #content h2:first-child, #content h3:first-child { margin-top: 0; }
+    #content h1 { font-size: 1.7em; padding-bottom: 0.3em; border-bottom: 1px solid #d0d7de; }
+    #content h2 { font-size: 1.3em; padding-bottom: 0.25em; border-bottom: 1px solid #eaecef; }
+    #content h3 { font-size: 1.08em; }
+    #content p { margin: 0.8em 0; }
+    #content p:first-child { margin-top: 0; }
+    #content ul, #content ol { padding-left: 1.8em; margin: 0.6em 0; }
+    #content li { margin: 0.3em 0; }
+    #content a { color: #0969da; }
+    #content strong { font-weight: 600; }
+    #content blockquote {
+      border-left: 3px solid #d0d7de;
+      margin: 1em 0;
+      padding: 4px 16px;
+      color: #57606a;
+    }
+    #content hr { border: none; border-top: 1px solid #d0d7de; margin: 1.5em 0; }
+    #content img { max-width: 100%; border-radius: 6px; }
+    #content code {
+      font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace;
+      font-size: 0.85em;
+      background: rgba(9,105,218,0.08);
+      color: #0550ae;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+    #content pre {
+      border: 1px solid #d0d7de;
+      border-radius: 8px;
+      overflow-x: auto;
+      margin: 1em 0;
+      background: #f6f8fa;
+    }
+    #content pre code {
+      display: block;
+      padding: 14px 16px;
+      font-size: 0.85em;
+      line-height: 1.65;
+      background: transparent;
+      color: #1f2328;
+      border-radius: 0;
+      padding-inline: 16px;
+    }
+    #content table { border-collapse: collapse; width: 100%; margin: 1em 0; font-size: 0.88em; }
+    #content th, #content td { border: 1px solid #d0d7de; padding: 7px 13px; text-align: left; }
+    #content th { background: #f6f8fa; font-weight: 600; }
+
+    @media print {
+      .print-bar { display: none; }
+      body { padding: 0; max-width: none; }
+      #content pre { break-inside: avoid; }
+    }
+  </style>
+  <script type="importmap">{"imports": {"marked": "https://esm.sh/marked@12"}}</script>
+</head>
+<body>
+  <div class="print-bar">
+    <span class="brand">NoteKeeper</span>
+    <button class="print-btn" onclick="window.print()">Save as PDF</button>
+  </div>
+
+  <h1 class="note-title">{{ note.title }}</h1>
+  <div class="note-meta">Last updated {{ note.updated_at|date:"F j, Y" }}</div>
+
+  <div id="content"></div>
+
+  {{ note.text|json_script:"note-raw" }}
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <script type="module">
+    import { marked } from 'marked';
+
+    marked.use({
+      renderer: {
+        code(tokenOrCode, infostring) {
+          const isToken = tokenOrCode !== null && typeof tokenOrCode === 'object';
+          const text = typeof (isToken ? tokenOrCode.text : tokenOrCode) === 'string'
+            ? (isToken ? tokenOrCode.text : tokenOrCode) : '';
+          const lang = ((isToken ? tokenOrCode.lang : infostring) || '').split(/[=\s]/)[0].toLowerCase();
+          const hljs = window.hljs;
+          if (!hljs || !text) return `<pre><code>${text}</code></pre>`;
+          try {
+            const result = (lang && hljs.getLanguage(lang))
+              ? hljs.highlight(text, { language: lang })
+              : hljs.highlightAuto(text);
+            return `<pre><code class="hljs${lang ? ` language-${lang}` : ''}">${result.value}</code></pre>`;
+          } catch { return `<pre><code>${text}</code></pre>`; }
+        },
+      },
+    });
+
+    const raw = JSON.parse(document.getElementById('note-raw').textContent);
+    document.getElementById('content').innerHTML = marked.parse(raw);
+  </script>
+</body>
+</html>
